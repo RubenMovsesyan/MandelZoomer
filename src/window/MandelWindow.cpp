@@ -1,7 +1,9 @@
 #include "window/MandelWindow.h"
 #include "exception/GLFWException.h"
 #include "exception/WGPUException.h"
+#include "render/MandelRender.h"
 #include <format>
+#include <glfw3webgpu.h>
 
 MandelWindow::MandelWindow(const int width, const int height) {
     // Initialize glfw
@@ -10,6 +12,11 @@ MandelWindow::MandelWindow(const int width, const int height) {
     }
 
     printf("GLFW Initialized\n");
+
+    int major, minor, rev;
+    glfwGetVersion(&major, &minor, &rev);
+    printf("GLFW Version: %d.%d.%d\n", major, minor, rev);
+
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     this->window = glfwCreateWindow(1280, 720, "Mandel Zoomer", nullptr, nullptr);
@@ -20,12 +27,24 @@ MandelWindow::MandelWindow(const int width, const int height) {
     this->instance = wgpuCreateInstance(&desc);
 
     if (!this->instance) {
-        throw WGPUException("Could not initialize WebGPU!");
+        throw WGPUException("Instance could not be created");
+    }
+
+    printf("WGPU Instace Created: %p\n", this->instance);
+
+    // Get the windows compatible surface
+    this->surface = glfwCreateWindowWGPUSurface(this->instance, this->window);
+    printf("Surface Creation Result: %p\n", this->surface);
+    if (!this->surface) {
+        const char* description;
+        int code = glfwGetError(&description);
+        throw WGPUException(std::format("Surface could not be created: {} ({})", description, code));
     }
 
     // Options for the adapter
     WGPURequestAdapterOptions adapter_options = {};
     adapter_options.nextInChain = nullptr;
+    adapter_options.compatibleSurface = this->surface;
 
     this->adapter = this->request_adapter_sync(&adapter_options);
     printf("Adapter Request Complete\n");
@@ -41,6 +60,8 @@ MandelWindow::MandelWindow(const int width, const int height) {
     if (!this->queue) {
         throw WGPUException("Could Not Get the WebGPU Queue");
     }
+
+    this->renderer = new MandelRender(this->surface, this->adapter, this->device, this->queue);
 }
 
 WGPUAdapter MandelWindow::request_adapter_sync(WGPURequestAdapterOptions const* options) {
@@ -118,10 +139,13 @@ WGPUDevice MandelWindow::request_device_sync(WGPUDeviceDescriptor const* descrip
 }
 
 MandelWindow::~MandelWindow() {
+    delete this->renderer;
+
     wgpuInstanceRelease(this->instance);
     wgpuQueueRelease(this->queue);
     wgpuDeviceRelease(this->device);
     wgpuAdapterRelease(this->adapter);
+    wgpuSurfaceRelease(this->surface);
 
     glfwTerminate();
 }
@@ -129,6 +153,8 @@ MandelWindow::~MandelWindow() {
 void MandelWindow::run_mandel_zoomer() {
     while (!glfwWindowShouldClose(this->window)) {
         glfwPollEvents();
+
+        this->renderer->render();
     }
 }
 

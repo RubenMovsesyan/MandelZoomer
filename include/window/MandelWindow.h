@@ -2,6 +2,7 @@
 #define MANDEL_WINDOW_H
 
 // #include "render/MandelRender.h"
+#include "render/MandelRender.h"
 #include <GLFW/glfw3.h>
 #include <functional>
 #include <webgpu/webgpu.h>
@@ -35,6 +36,10 @@ class MandelWindow {
     WGPUAdapter adapter;
     WGPUDevice device;
     WGPUQueue queue;
+
+    WGPUSurface surface;
+
+    MandelRender* renderer;
 
     GLFWwindow* window;
 

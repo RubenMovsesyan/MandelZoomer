@@ -1,10 +1,18 @@
 cmake_minimum_required(VERSION 4.0)
 
+# Change to release when done
+set(CMAKE_BUILD_TYPE Debug)
+
 # Change this to the name of application
 project(MandelZoom)
 
 # CMake Package manager
 include(FetchContent)
+
+if (APPLE OR CMAKE_SYSTEM_NAME MATCHES "Darwin")
+    set(GLFW_BUILD_COCOA ON CACHE BOOL "Build GLFW with Cocoa support")
+    message(STATUS "=== Setting GLFW_BUILD_COCOA=ON for macOS ===")
+endif()
 
 
 set(LIBS)
@@ -12,7 +20,14 @@ set(LIBS)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 set(CMAKE_CXX_STANDARD_EXTENSIONS OFF)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++23 -O3")
+
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++23 -g -O0 -DDEBUG")
+    message(STATUS "=== DEBUG BUILD ===")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++23 -O3")
+    message(STATUS "=== RELEASE BUILD ===")
+endif()
 
 set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR})
 
@@ -59,18 +74,35 @@ set(DAWN_ENABLE_BACKEND_D3D12 ON)
 
 FetchContent_MakeAvailable(webgpu)
 
+# GLFW
+find_package(glfw3 REQUIRED)
+
+# glfw3webgpu
+add_subdirectory(glfw3webgpu)
+
 list(APPEND LIBS webgpu)
+list(APPEND LIBS glfw)
+list(APPEND LIBS glfw3webgpu)
 
 # macOS-specific system dependencies for SDL3
 if (${CMAKE_SYSTEM} MATCHES "Darwin")
-    find_library(COCOA_LIBRARY Cocoa)
-    find_library(IOKIT_LIBRARY IOKit)
-    find_library(COREVIDEO_LIBRARY CoreVideo)
+    find_library(COCOA_LIBRARY Cocoa REQUIRED)
+    find_library(IOKIT_LIBRARY IOKit REQUIRED)
+    find_library(COREVIDEO_LIBRARY CoreVideo REQUIRED)
     find_library(COREAUDIO_LIBRARY CoreAudio)
     find_library(AUDIOTOOLBOX_LIBRARY AudioToolbox)
     find_library(CARBON_LIBRARY Carbon)
-    find_library(METAL_LIBRARY Metal)
-    find_library(QUARTZCORE_LIBRARY QuartzCore)
+    find_library(METAL_LIBRARY Metal REQUIRED)
+    find_library(QUARTZCORE_LIBRARY QuartzCore REQUIRED)
+
+    # Print each found library
+    foreach(lib COCOA_LIBRARY IOKIT_LIBRARY COREVIDEO_LIBRARY COREAUDIO_LIBRARY
+                AUDIOTOOLBOX_LIBRARY CARBON_LIBRARY METAL_LIBRARY QUARTZCORE_LIBRARY)
+        message(STATUS "${lib}: ${${lib}}")
+        if(${lib} MATCHES "NOTFOUND")
+            message(WARNING "${lib} not found!")
+        endif()
+    endforeach()
 
     list(APPEND LIBS
         ${COCOA_LIBRARY}
@@ -82,14 +114,20 @@ if (${CMAKE_SYSTEM} MATCHES "Darwin")
         ${METAL_LIBRARY}
         ${QUARTZCORE_LIBRARY}
     )
+
+    message(STATUS "=== Added macOS frameworks ===")
+else()
+    message(STATUS "=== Not macOS - System: ${CMAKE_SYSTEM_NAME} ===")
 endif()
 
-find_package(glfw3 REQUIRED)
+message(STATUS "=== FINAL LIBS LIST ===")
+foreach(lib ${LIBS})
+    message(STATUS "  - ${lib}")
+endforeach()
 
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBS})
-target_link_libraries(${PROJECT_NAME} PRIVATE glfw)
 
 
 # Copy WebGPU binaries if needed (for runtime dynamic libraries)
