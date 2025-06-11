@@ -21,7 +21,7 @@ MandelWindow::MandelWindow(const int width, const int height) {
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     this->window = glfwCreateWindow(1280, 720, "Mandel Zoomer", nullptr, nullptr);
 
-    WGPUInstanceDescriptor desc = {};
+    wgpu::InstanceDescriptor desc = {};
     desc.nextInChain = nullptr;
 
     this->instance = wgpuCreateInstance(&desc);
@@ -30,11 +30,8 @@ MandelWindow::MandelWindow(const int width, const int height) {
         throw WGPUException("Instance could not be created");
     }
 
-    printf("WGPU Instace Created: %p\n", this->instance);
-
     // Get the windows compatible surface
     this->surface = glfwCreateWindowWGPUSurface(this->instance, this->window);
-    printf("Surface Creation Result: %p\n", this->surface);
     if (!this->surface) {
         const char* description;
         int code = glfwGetError(&description);
@@ -42,7 +39,7 @@ MandelWindow::MandelWindow(const int width, const int height) {
     }
 
     // Options for the adapter
-    WGPURequestAdapterOptions adapter_options = {};
+    wgpu::RequestAdapterOptions adapter_options = {};
     adapter_options.nextInChain = nullptr;
     adapter_options.compatibleSurface = this->surface;
 
@@ -50,7 +47,7 @@ MandelWindow::MandelWindow(const int width, const int height) {
     printf("Adapter Request Complete\n");
 
     // Options for the device
-    WGPUDeviceDescriptor device_descriptor = {};
+    wgpu::DeviceDescriptor device_descriptor = {};
 
     this->device = this->request_device_sync(&device_descriptor);
     printf("Device Request Complete\n");
@@ -64,9 +61,9 @@ MandelWindow::MandelWindow(const int width, const int height) {
     this->renderer = new MandelRender(this->surface, this->adapter, this->device, this->queue);
 }
 
-WGPUAdapter MandelWindow::request_adapter_sync(WGPURequestAdapterOptions const* options) {
+wgpu::Adapter MandelWindow::request_adapter_sync(wgpu::RequestAdapterOptions const* options) {
     struct UserData {
-        WGPUAdapter adapter = nullptr;
+        wgpu::Adapter adapter = nullptr;
         bool request_ended = false;
     };
 
@@ -85,7 +82,7 @@ WGPUAdapter MandelWindow::request_adapter_sync(WGPURequestAdapterOptions const* 
         user_data.request_ended = true;
     };
 
-    WGPURequestAdapterCallbackInfo callback_info;
+    wgpu::RequestAdapterCallbackInfo callback_info;
     callback_info.mode = WGPUCallbackMode_AllowSpontaneous;
     callback_info.callback = on_adapter_request_ended;
     callback_info.userdata1 = &user_data;
@@ -101,9 +98,9 @@ WGPUAdapter MandelWindow::request_adapter_sync(WGPURequestAdapterOptions const* 
     return user_data.adapter;
 }
 
-WGPUDevice MandelWindow::request_device_sync(WGPUDeviceDescriptor const* descriptor) {
+wgpu::Device MandelWindow::request_device_sync(wgpu::DeviceDescriptor const* descriptor) {
     struct UserData {
-        WGPUDevice device = nullptr;
+        wgpu::Device device = nullptr;
         bool request_ended = false;
     };
 

@@ -3,9 +3,9 @@
 
 // #include "render/MandelRender.h"
 #include "render/MandelRender.h"
+#include "webgpu/webgpu.hpp"
 #include <GLFW/glfw3.h>
 #include <functional>
-#include <webgpu/webgpu.h>
 
 // Type aliases
 using KeyCallback = std::function<void(int key, int scancode, int action, int mode)>;
@@ -31,12 +31,12 @@ class MandelWindow {
     void set_mouse_motion_delta_callback(MouseMotionDeltaCallback mouse_motion_callback);
 
   private:
-    WGPUInstance instance;
-    WGPUAdapter adapter;
-    WGPUDevice device;
-    WGPUQueue queue;
+    wgpu::Instance instance;
+    wgpu::Adapter adapter;
+    wgpu::Device device;
+    wgpu::Queue queue;
 
-    WGPUSurface surface;
+    wgpu::Surface surface;
 
     MandelRender* renderer;
 
@@ -49,8 +49,8 @@ class MandelWindow {
     MouseMotionCallback mouse_motion_callback;
     MouseMotionDeltaCallback mouse_motion_delta_callback;
 
-    WGPUAdapter request_adapter_sync(WGPURequestAdapterOptions const* options);
-    WGPUDevice request_device_sync(WGPUDeviceDescriptor const* descriptor);
+    wgpu::Adapter request_adapter_sync(wgpu::RequestAdapterOptions const* options);
+    wgpu::Device request_device_sync(wgpu::DeviceDescriptor const* descriptor);
 
     // Static callbacks
     static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);

@@ -1,10 +1,10 @@
 #include "render/MandelRender.h"
 #include "exception/WGPUException.h"
+#include "render/RenderProps.h"
 #include <format>
 #include <stdio.h>
-#include <webgpu/webgpu.h>
 
-MandelRender::MandelRender(WGPUSurface& surface, WGPUAdapter& adapter, WGPUDevice& device, WGPUQueue& queue) {
+MandelRender::MandelRender(wgpu::Surface& surface, wgpu::Adapter& adapter, wgpu::Device& device, wgpu::Queue& queue) {
     this->device = &device;
     this->surface = &surface;
     this->queue = &queue;
@@ -34,9 +34,12 @@ MandelRender::MandelRender(WGPUSurface& surface, WGPUAdapter& adapter, WGPUDevic
 
     wgpuSurfaceConfigure(*this->surface, &surface_config);
     printf("Configured Surface\n");
+
+    this->render_props = RenderProps(*this->device);
 }
 
-MandelRender::MandelRender() {}
+MandelRender::MandelRender() {
+}
 
 MandelRender::~MandelRender() {
     wgpuSurfaceUnconfigure(*this->surface);

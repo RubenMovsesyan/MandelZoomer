@@ -52,27 +52,30 @@ file(GLOB_RECURSE SRC_FILES "${SOURCE_DIR}/*.cpp" "${SOURCE_DIR}/*.c")
 
 set(BUILD_SHARED_LIBS OFF)
 
-# Set WebGPU-specific static linking options before FetchContent
-set(WEBGPU_BACKEND "DAWN" CACHE STRING "WebGPU backend")
-set(WEBGPU_FORCE_SYSTEM_DAWN OFF CACHE BOOL "Force system Dawn")
+# # Set WebGPU-specific static linking options before FetchContent
+# set(WEBGPU_BACKEND "DAWN" CACHE STRING "WebGPU backend")
+# set(WEBGPU_FORCE_SYSTEM_DAWN OFF CACHE BOOL "Force system Dawn")
 
-# WGPU
-FetchContent_Declare(
-    webgpu
-    GIT_REPOSITORY https://github.com/eliemichel/WebGPU-distribution.git
-    GIT_TAG "main"
-)
+# # WGPU
+# FetchContent_Declare(
+#     webgpu
+#     GIT_REPOSITORY https://github.com/eliemichel/WebGPU-distribution.git
+#     GIT_TAG "main"
+# )
 
-# Set Dawn-specific options for static linking
-set(DAWN_FETCH_DEPENDENCIES ON)
-set(DAWN_BUILD_SAMPLES OFF)
-set(DAWN_ENABLE_INSTALL OFF)
-set(DAWN_ENABLE_BACKEND_VULKAN ON)
-set(DAWN_ENABLE_BACKEND_METAL ON)
-set(DAWN_ENABLE_BACKEND_D3D11 ON)
-set(DAWN_ENABLE_BACKEND_D3D12 ON)
+# # Set Dawn-specific options for static linking
+# set(DAWN_FETCH_DEPENDENCIES ON)
+# set(DAWN_BUILD_SAMPLES OFF)
+# set(DAWN_ENABLE_INSTALL OFF)
+# set(DAWN_ENABLE_BACKEND_VULKAN ON)
+# set(DAWN_ENABLE_BACKEND_METAL ON)
+# set(DAWN_ENABLE_BACKEND_D3D11 ON)
+# set(DAWN_ENABLE_BACKEND_D3D12 ON)
 
-FetchContent_MakeAvailable(webgpu)
+# FetchContent_MakeAvailable(webgpu)
+
+# webgpu
+add_subdirectory(webgpu)
 
 # GLFW
 find_package(glfw3 REQUIRED)

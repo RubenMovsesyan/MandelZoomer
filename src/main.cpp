@@ -1,3 +1,4 @@
+#define WEBGPU_CPP_IMPLEMENTATION
 #include "window/MandelWindow.h"
 // #include <SDL3/SDL_keycode.h>
 // #include <memory>
@@ -25,6 +26,10 @@ int main() {
             printf("The mouse is at: %f, %f\n", x, y);
         }
     );
+
+#ifdef WGPU_BACKEND_WGPU
+    printf("Using wgpu backend\n");
+#endif
 
     window->run_mandel_zoomer();
 
