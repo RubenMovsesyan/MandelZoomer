@@ -150,6 +150,13 @@ MandelWindow::~MandelWindow() {
     glfwTerminate();
 }
 
+/*
+ *
+ *
+ * This is the Main application loop
+ *
+ *
+ */
 void MandelWindow::run_mandel_zoomer() {
     while (!glfwWindowShouldClose(this->window)) {
         glfwPollEvents();
@@ -165,6 +172,9 @@ void MandelWindow::set_key_callback(KeyCallback key_callback) {
     }
 
     this->key_callback = key_callback;
+
+    this->set_glfw_callbacks();
+    printf("Setting the keycallback\n");
 }
 
 void MandelWindow::set_mouse_motion_callback(
@@ -175,6 +185,8 @@ void MandelWindow::set_mouse_motion_callback(
     }
 
     this->mouse_motion_callback = mouse_motion_callback;
+
+    this->set_glfw_callbacks();
 }
 
 void MandelWindow::set_mouse_motion_delta_callback(
@@ -185,4 +197,39 @@ void MandelWindow::set_mouse_motion_delta_callback(
     }
 
     this->mouse_motion_delta_callback = mouse_motion_delta_callback;
+
+    this->set_glfw_callbacks();
+}
+
+void MandelWindow::set_glfw_callbacks() {
+    // Store 'this' pointer so static callback can access it
+    glfwSetWindowUserPointer(this->window, this);
+
+    // Set the static callback function
+    glfwSetKeyCallback(this->window, MandelWindow::glfw_key_callback);
+    glfwSetCursorPosCallback(this->window, MandelWindow::glfw_mouse_motion_callback);
+}
+
+// static Callbacks
+// TODO: Maybe change these to dynamic_cast?
+void MandelWindow::glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mode) {
+    auto user = static_cast<MandelWindow*>(glfwGetWindowUserPointer(window));
+
+    if (user->key_callback) {
+        user->key_callback(key, scancode, action, mode);
+    }
+}
+
+void MandelWindow::glfw_mouse_motion_callback(GLFWwindow* window, double xpos, double ypos) {
+    auto user = static_cast<MandelWindow*>(glfwGetWindowUserPointer(window));
+
+    if (user->mouse_motion_callback) {
+        user->mouse_motion_callback(xpos, ypos);
+    }
+
+    if (user->mouse_motion_delta_callback) {
+        user->mouse_motion_delta_callback(xpos - user->prev_mouse_x, ypos - user->prev_mouse_y);
+        user->prev_mouse_x = xpos;
+        user->prev_mouse_y = ypos;
+    }
 }

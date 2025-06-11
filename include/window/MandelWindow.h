@@ -8,12 +8,11 @@
 #include <webgpu/webgpu.h>
 
 // Type aliases
-// 										code 		 modifiers  keydown repeat
-using KeyCallback = std::function<void()>;
+using KeyCallback = std::function<void(int key, int scancode, int action, int mode)>;
 // 												x pos	  y pos
-using MouseMotionCallback = std::function<void(float x, float y)>;
+using MouseMotionCallback = std::function<void(double x, double y)>;
 // 													delta x		delta y
-using MouseMotionDeltaCallback = std::function<void(float dx, float dy)>;
+using MouseMotionDeltaCallback = std::function<void(double dx, double dy)>;
 
 class MandelWindow {
   public:
@@ -43,7 +42,7 @@ class MandelWindow {
 
     GLFWwindow* window;
 
-    float prev_mouse_x, prev_mouse_y;
+    double prev_mouse_x, prev_mouse_y;
 
     // Callback functions
     KeyCallback key_callback;
@@ -52,6 +51,12 @@ class MandelWindow {
 
     WGPUAdapter request_adapter_sync(WGPURequestAdapterOptions const* options);
     WGPUDevice request_device_sync(WGPUDeviceDescriptor const* descriptor);
+
+    // Static callbacks
+    static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
+    static void glfw_mouse_motion_callback(GLFWwindow* window, double xpos, double ypos);
+
+    void set_glfw_callbacks();
 };
 
 #endif
