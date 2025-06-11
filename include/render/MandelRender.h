@@ -6,6 +6,9 @@
 #include <expected>
 #include <string>
 
+const size_t COLOR_TARGETS_LEN = 1;
+const size_t COLOR_TARGET_DESCRIPTION_LEN = 1;
+
 class MandelRender {
   public:
     MandelRender(SDL_Window* window);
@@ -28,6 +31,12 @@ class MandelRender {
     SDL_GPUDevice* device;
     SDL_GPUCommandBuffer* command_buffer;
     SDL_GPUTexture* swapchain_texture;
+    SDL_GPUGraphicsPipeline* pipeline;
+    SDL_GPUBuffer* vertex_buffer;
+
+    // Color targets for shaders and rendering
+    SDL_GPUColorTargetInfo color_targets[COLOR_TARGETS_LEN]{};
+    SDL_GPUColorTargetDescription color_target_descriptions[COLOR_TARGET_DESCRIPTION_LEN]{};
 
     // Pointer to the window for rendering
     SDL_Window* window;

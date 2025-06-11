@@ -3,13 +3,13 @@
 
 using namespace metal;
 
-struct VertexToPixel
+struct Input
 {
     float4 position;
-    float3 color;
+    float2 uv;
 };
 
-constant float4 _21 = {};
+constant float4 _22 = {};
 
 struct main0_out
 {
@@ -18,16 +18,15 @@ struct main0_out
 
 struct main0_in
 {
-    float4 in_var_POSITION [[user(locn0)]];
-    float3 in_var_COLOR [[user(locn1)]];
+    float2 in_var_TEXCOORD0 [[user(locn0)]];
 };
 
-fragment main0_out main0(main0_in in [[stage_in]])
+fragment main0_out main0(main0_in in [[stage_in]], float4 gl_FragCoord [[position]])
 {
     main0_out out = {};
-    float3 _23 = in.in_var_COLOR;
-    float4 _31 = float4(in.in_var_COLOR, 1.0);
-    float4 _24 = _31;
+    float2 _24 = in.in_var_TEXCOORD0;
+    float4 _31 = float4(in.in_var_TEXCOORD0, 0.0, 1.0);
+    float4 _25 = _31;
     out.out_var_SV_TARGET = _31;
     return out;
 }

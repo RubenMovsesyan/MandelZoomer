@@ -1,19 +1,14 @@
 #ifndef MANDEL_WINDOW_H
 #define MANDEL_WINDOW_H
 
-#include "render/MandelRender.h"
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_events.h>
-#include <SDL3/SDL_gpu.h>
-#include <SDL3/SDL_keycode.h>
-#include <SDL3/SDL_mouse.h>
-#include <SDL3/SDL_stdinc.h>
-#include <SDL3/SDL_video.h>
+// #include "render/MandelRender.h"
+#include <GLFW/glfw3.h>
 #include <functional>
+#include <webgpu/webgpu.h>
 
 // Type aliases
 // 										code 		 modifiers  keydown repeat
-using KeyCallback = std::function<void(SDL_Keycode, SDL_Keymod, bool, bool)>;
+using KeyCallback = std::function<void()>;
 // 												x pos	  y pos
 using MouseMotionCallback = std::function<void(float x, float y)>;
 // 													delta x		delta y
@@ -36,9 +31,12 @@ class MandelWindow {
     void set_mouse_motion_delta_callback(MouseMotionDeltaCallback mouse_motion_callback);
 
   private:
-    SDL_Window* window;
-    MandelRender renderer;
-    bool done;
+    WGPUInstance instance;
+    WGPUAdapter adapter;
+    WGPUDevice device;
+    WGPUQueue queue;
+
+    GLFWwindow* window;
 
     float prev_mouse_x, prev_mouse_y;
 
@@ -46,6 +44,9 @@ class MandelWindow {
     KeyCallback key_callback;
     MouseMotionCallback mouse_motion_callback;
     MouseMotionDeltaCallback mouse_motion_delta_callback;
+
+    WGPUAdapter request_adapter_sync(WGPURequestAdapterOptions const* options);
+    WGPUDevice request_device_sync(WGPUDeviceDescriptor const* descriptor);
 };
 
 #endif

@@ -3,15 +3,8 @@ cmake_minimum_required(VERSION 4.0)
 # Change this to the name of application
 project(MandelZoom)
 
-# CPM
-# Package manager for CMAKE
-file(
-        DOWNLOAD
-        https://github.com/cpm-cmake/CPM.cmake/releases/download/v0.38.3/CPM.cmake
-        ${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake
-        EXPECTED_HASH SHA256=cc155ce02e7945e7b8967ddfaff0b050e958a723ef7aad3766d368940cb15494
-)
-include(${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake)
+# CMake Package manager
+include(FetchContent)
 
 
 set(LIBS)
@@ -40,15 +33,33 @@ foreach(SUBDIR ${INCLUDE_DIRS_LIST})
     endif()
 endforeach()
 
-file(GLOB_RECURSE SRC_FILES "${SOURCE_DIR}/*.cpp")
+file(GLOB_RECURSE SRC_FILES "${SOURCE_DIR}/*.cpp" "${SOURCE_DIR}/*.c")
 
 set(BUILD_SHARED_LIBS OFF)
 
-# SDL
-set(SDL_STATIC ON)
-set(SDL_SHARED OFF)
-CPMAddPackage("gh:libsdl-org/SDL#4c70aa3")
-list(APPEND LIBS SDL3::SDL3)
+# Set WebGPU-specific static linking options before FetchContent
+set(WEBGPU_BACKEND "DAWN" CACHE STRING "WebGPU backend")
+set(WEBGPU_FORCE_SYSTEM_DAWN OFF CACHE BOOL "Force system Dawn")
+
+# WGPU
+FetchContent_Declare(
+    webgpu
+    GIT_REPOSITORY https://github.com/eliemichel/WebGPU-distribution.git
+    GIT_TAG "main"
+)
+
+# Set Dawn-specific options for static linking
+set(DAWN_FETCH_DEPENDENCIES ON)
+set(DAWN_BUILD_SAMPLES OFF)
+set(DAWN_ENABLE_INSTALL OFF)
+set(DAWN_ENABLE_BACKEND_VULKAN ON)
+set(DAWN_ENABLE_BACKEND_METAL ON)
+set(DAWN_ENABLE_BACKEND_D3D11 ON)
+set(DAWN_ENABLE_BACKEND_D3D12 ON)
+
+FetchContent_MakeAvailable(webgpu)
+
+list(APPEND LIBS webgpu)
 
 # macOS-specific system dependencies for SDL3
 if (${CMAKE_SYSTEM} MATCHES "Darwin")
@@ -73,7 +84,22 @@ if (${CMAKE_SYSTEM} MATCHES "Darwin")
     )
 endif()
 
+find_package(glfw3 REQUIRED)
 
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBS})
+target_link_libraries(${PROJECT_NAME} PRIVATE glfw)
+
+
+# Copy WebGPU binaries if needed (for runtime dynamic libraries)
+if (TARGET webgpu)
+    get_target_property(WEBGPU_TYPE webgpu TYPE)
+    if (WEBGPU_TYPE STREQUAL "SHARED_LIBRARY")
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:webgpu>
+            $<TARGET_FILE_DIR:${PROJECT_NAME}>
+        )
+    endif()
+endif()

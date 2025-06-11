@@ -1,106 +1,141 @@
 #include "window/MandelWindow.h"
-#include "exception/SDLException.h"
-#include "render/MandelRender.h"
-#include <SDL3/SDL_events.h>
-#include <SDL3/SDL_init.h>
-#include <SDL3/SDL_log.h>
-#include <SDL3/SDL_main.h>
-#include <SDL3/SDL_oldnames.h>
-#include <SDL3/SDL_video.h>
+#include "exception/GLFWException.h"
+#include "exception/WGPUException.h"
+#include <format>
 
 MandelWindow::MandelWindow(const int width, const int height) {
-    // Init SDL
-    // Init the video output
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
-        throw SDLException("Couldn't Initialize SDL");
+    // Initialize glfw
+    if (!glfwInit()) {
+        throw GLFWException("Could Not Initialize GLFW");
     }
 
-    // Create the window and start the application loop
-    this->window = SDL_CreateWindow("MandelZoomer", width, height, 0);
+    printf("GLFW Initialized\n");
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+    this->window = glfwCreateWindow(1280, 720, "Mandel Zoomer", nullptr, nullptr);
 
-    // Initialize other variables
-    this->prev_mouse_x = 0.0;
-    this->prev_mouse_y = 0.0;
+    WGPUInstanceDescriptor desc = {};
+    desc.nextInChain = nullptr;
 
-    // If the window does not exist then dont start the application loop
-    if (this->window == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Could not create window: %s\n", SDL_GetError());
+    this->instance = wgpuCreateInstance(&desc);
 
-        throw SDLException("Couldn't Initialize Window");
-
-        this->done = true;
-    } else {
-        this->done = false;
+    if (!this->instance) {
+        throw WGPUException("Could not initialize WebGPU!");
     }
 
-    this->renderer = MandelRender(this->window);
+    // Options for the adapter
+    WGPURequestAdapterOptions adapter_options = {};
+    adapter_options.nextInChain = nullptr;
+
+    this->adapter = this->request_adapter_sync(&adapter_options);
+    printf("Adapter Request Complete\n");
+
+    // Options for the device
+    WGPUDeviceDescriptor device_descriptor = {};
+
+    this->device = this->request_device_sync(&device_descriptor);
+    printf("Device Request Complete\n");
+
+    this->queue = wgpuDeviceGetQueue(this->device);
+
+    if (!this->queue) {
+        throw WGPUException("Could Not Get the WebGPU Queue");
+    }
+}
+
+WGPUAdapter MandelWindow::request_adapter_sync(WGPURequestAdapterOptions const* options) {
+    struct UserData {
+        WGPUAdapter adapter = nullptr;
+        bool request_ended = false;
+    };
+
+    UserData user_data;
+
+    // Create a callback for the InstanceRequestAdapter
+    auto on_adapter_request_ended = [](WGPURequestAdapterStatus status, WGPUAdapter adapter, WGPUStringView message, WGPU_NULLABLE void* p_user_data, WGPU_NULLABLE void* p_user_data_2) {
+        UserData& user_data = *reinterpret_cast<UserData*>(p_user_data);
+
+        if (status == WGPURequestAdapterStatus_Success) {
+            user_data.adapter = adapter;
+        } else {
+            throw WGPUException(std::format("Could Not Get WebGPU Adapter: {}", message.data));
+        }
+
+        user_data.request_ended = true;
+    };
+
+    WGPURequestAdapterCallbackInfo callback_info;
+    callback_info.mode = WGPUCallbackMode_AllowSpontaneous;
+    callback_info.callback = on_adapter_request_ended;
+    callback_info.userdata1 = &user_data;
+    callback_info.userdata2 = nullptr;
+
+    // Request the adapter
+    wgpuInstanceRequestAdapter(
+        this->instance,
+        options,
+        callback_info
+    );
+
+    return user_data.adapter;
+}
+
+WGPUDevice MandelWindow::request_device_sync(WGPUDeviceDescriptor const* descriptor) {
+    struct UserData {
+        WGPUDevice device = nullptr;
+        bool request_ended = false;
+    };
+
+    UserData user_data;
+
+    // Create a callback for the AdapterRequestDevice
+    auto on_device_request_ended = [](WGPURequestDeviceStatus status, WGPUDevice device, WGPUStringView message, WGPU_NULLABLE void* p_user_data, WGPU_NULLABLE void* p_user_data_2) {
+        UserData& user_data = *reinterpret_cast<UserData*>(p_user_data);
+
+        if (status == WGPURequestDeviceStatus_Success) {
+            user_data.device = device;
+        } else {
+            throw WGPUException(std::format("Could Not Get WebGPU Device: {}", message.data));
+        }
+
+        user_data.request_ended = true;
+    };
+
+    WGPURequestDeviceCallbackInfo callback_info;
+    callback_info.mode = WGPUCallbackMode_AllowSpontaneous;
+    callback_info.callback = on_device_request_ended;
+    callback_info.userdata1 = &user_data;
+    callback_info.userdata2 = nullptr;
+
+    // Request the device
+    wgpuAdapterRequestDevice(
+        this->adapter,
+        descriptor,
+        callback_info
+    );
+
+    return user_data.device;
 }
 
 MandelWindow::~MandelWindow() {
-    // Destruct the renderer so it drops the window before it goes out of scope
-    this->renderer.~MandelRender();
+    wgpuInstanceRelease(this->instance);
+    wgpuQueueRelease(this->queue);
+    wgpuDeviceRelease(this->device);
+    wgpuAdapterRelease(this->adapter);
 
-    // Destroy the window and cleanup
-    if (this->window != NULL) {
-        SDL_DestroyWindow(this->window);
-        printf("SDL Window Destroyed\n");
-    }
-
-    // Gracefully quit SDL
-    SDL_Quit();
-    printf("Goodbye :)\n");
+    glfwTerminate();
 }
 
 void MandelWindow::run_mandel_zoomer() {
-    while (!done) {
-        SDL_Event event;
-
-        while (SDL_PollEvent(&event)) {
-            switch (event.type) {
-                case SDL_EVENT_QUIT: {
-                    done = true;
-                    break;
-                }
-                case SDL_EVENT_KEY_DOWN: {
-                    SDL_KeyboardEvent keyboard_event = event.key;
-                    if (this->key_callback) {
-                        this->key_callback(keyboard_event.key, keyboard_event.mod, keyboard_event.down, keyboard_event.repeat);
-                    }
-
-                    break;
-                }
-                case SDL_EVENT_MOUSE_MOTION: {
-                    SDL_MouseMotionEvent mouse_motion_event = event.motion;
-                    if (this->mouse_motion_callback) {
-                        this->mouse_motion_callback(mouse_motion_event.x, mouse_motion_event.y);
-                    }
-
-                    if (this->mouse_motion_delta_callback) {
-                        float delta_x = prev_mouse_x - mouse_motion_event.x;
-                        float delta_y = prev_mouse_y - mouse_motion_event.y;
-                        this->mouse_motion_delta_callback(delta_x, delta_y);
-                    }
-
-                    prev_mouse_x = mouse_motion_event.x;
-                    prev_mouse_y = mouse_motion_event.y;
-
-                    break;
-                }
-                default: {
-                    break;
-                }
-            }
-        }
-
-        // Call the render pass of the renderer
-        this->renderer.render();
+    while (!glfwWindowShouldClose(this->window)) {
+        glfwPollEvents();
     }
 }
 
 // Function implementaitons to set the callbacks for each window event
 void MandelWindow::set_key_callback(KeyCallback key_callback) {
     if (this->key_callback) {
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Existing Key Callback is being replaced\n");
+        printf("Existing Key Callback is being replaced\n");
     }
 
     this->key_callback = key_callback;
@@ -110,7 +145,7 @@ void MandelWindow::set_mouse_motion_callback(
     MouseMotionCallback mouse_motion_callback
 ) {
     if (this->mouse_motion_callback) {
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Existing Mouse Motion Callback is being replaced\n");
+        printf("Existing Mouse Motion Callback is being replaced\n");
     }
 
     this->mouse_motion_callback = mouse_motion_callback;
@@ -120,7 +155,7 @@ void MandelWindow::set_mouse_motion_delta_callback(
     MouseMotionDeltaCallback mouse_motion_delta_callback
 ) {
     if (this->mouse_motion_delta_callback) {
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Existing Mouse Motion Delta Callback is being replaced\n");
+        printf("Existing Mouse Motion Delta Callback is being replaced\n");
     }
 
     this->mouse_motion_delta_callback = mouse_motion_delta_callback;
