@@ -189,7 +189,7 @@ RenderProps::RenderProps(wgpu::Device& device, wgpu::Queue& queue, wgpu::Surface
     	var c: vec2<f32> = vertex_input.uv * descriptor.zoom + vec2<f32>(descriptor.offset_x, descriptor.offset_y);
      	var z: vec2<f32> = vec2<f32>(0.0, 0.0);
 
-      	let iterations: f32 = 256.0;
+      	let iterations: f32 = min(256.0 / (descriptor.zoom * 5.0), 8192.0);
 
       	for (var i: f32 = 0; i < iterations; i += 1.0) {
        		z = complex_mult(z, z) + c;
