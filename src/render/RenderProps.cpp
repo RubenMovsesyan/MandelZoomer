@@ -146,6 +146,31 @@ RenderProps::RenderProps(wgpu::Device& device, wgpu::Queue& queue, wgpu::Surface
     @group(0) @binding(0)
     var<uniform> descriptor: Descriptor;
 
+    // h must be between 0 and 360
+    fn hsl_to_rgb(h: f32, s: f32, l: f32) -> vec3<f32> {
+        let chroma = s * (1 - abs(2 * l - 1));
+        let h_prime = h / 60.0;
+        let x = chroma * (1 - abs(h_prime % 2.0 - 1));
+
+        let m = l - chroma / 2.0;
+
+        if (h_prime >= 0 && h_prime < 1) {
+            return vec3<f32>(chroma + m, x + m, 0.0 + m);
+        } else if (h_prime >= 1 && h_prime < 2) {
+            return vec3<f32>(x + m, chroma + m, 0.0 + m);
+        } else if (h_prime >= 2 && h_prime < 3) {
+            return vec3<f32>(0.0 + m, chroma + m, x + m);
+        } else if (h_prime >= 3 && h_prime < 4) {
+            return vec3<f32>(0.0 + m, x + m, chroma + m);
+        } else if (h_prime >= 4 && h_prime < 5) {
+            return vec3<f32>(x + m, 0.0 + m, chroma + m);
+        } else if (h_prime >= 5 && h_prime <= 6) {
+            return vec3<f32>(chroma + m, 0.0 + m, x + m);
+        } else {
+            return vec3<f32>(0.0 + m, 0.0 + m, 0.0 + m);
+        }
+    }
+
     fn complex_mult(complex1: vec2<f32>, complex2: vec2<f32>) -> vec2<f32> {
     	let a = complex1.x;
      	let b = complex1.y;
@@ -162,13 +187,15 @@ RenderProps::RenderProps(wgpu::Device& device, wgpu::Queue& queue, wgpu::Surface
     @fragment
     fn main(vertex_input: VertexOutput) -> @location(0) vec4<f32> {
     	var c: vec2<f32> = vertex_input.uv * descriptor.zoom + vec2<f32>(descriptor.offset_x, descriptor.offset_y);
-
      	var z: vec2<f32> = vec2<f32>(0.0, 0.0);
 
-      	for (var i = 0; i < 32; i++) {
+      	let iterations: f32 = 256.0;
+
+      	for (var i: f32 = 0; i < iterations; i += 1.0) {
        		z = complex_mult(z, z) + c;
          	if (length(z) >= 2.0) {
-          		return vec4<f32>(f32(i) / 32.0, 0.0, f32(i) / 32.0, 1.0);
+          		// return vec4<f32>(i / iterations, 0.0, i / iterations, 1.0);
+            	return vec4<f32>(hsl_to_rgb((i / iterations * 360.0), 1.0, 0.5), 1.0);
             }
        	}
 

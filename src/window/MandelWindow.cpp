@@ -4,6 +4,8 @@
 #include "render/MandelRender.h"
 #include <format>
 #include <glfw3webgpu.h>
+#include <webgpu.h>
+#include <webgpu/webgpu.hpp>
 
 MandelWindow::MandelWindow(const int width, const int height) {
     // Initialize glfw
@@ -41,14 +43,15 @@ MandelWindow::MandelWindow(const int width, const int height) {
     // Options for the adapter
     wgpu::RequestAdapterOptions adapter_options = {};
     adapter_options.nextInChain = nullptr;
+    adapter_options.powerPreference = wgpu::PowerPreference::HighPerformance;
     adapter_options.compatibleSurface = this->surface;
+    adapter_options.featureLevel = wgpu::FeatureLevel::Core;
 
     this->adapter = this->request_adapter_sync(&adapter_options);
     printf("Adapter Request Complete\n");
 
     // Options for the device
     wgpu::DeviceDescriptor device_descriptor = {};
-
     this->device = this->request_device_sync(&device_descriptor);
     printf("Device Request Complete\n");
 
