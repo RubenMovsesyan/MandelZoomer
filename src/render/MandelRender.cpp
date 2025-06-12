@@ -1,6 +1,7 @@
 #include "render/MandelRender.h"
 #include "exception/WGPUException.h"
 #include "render/RenderProps.h"
+#include "webgpu/webgpu.hpp"
 #include <format>
 #include <stdio.h>
 
@@ -9,16 +10,15 @@ MandelRender::MandelRender(wgpu::Surface& surface, wgpu::Adapter& adapter, wgpu:
     this->surface = &surface;
     this->queue = &queue;
 
-    WGPUSurfaceConfiguration surface_config = {};
+    wgpu::SurfaceConfiguration surface_config = {};
 
     surface_config.nextInChain = nullptr;
     surface_config.width = 1280;
     surface_config.height = 720;
 
     // WGPUTextureFormat surface_format = wgpuSurfaceGetPreferredFormat(*surface, *adapter);
-    WGPUSurfaceCapabilities capabilities{
-        .nextInChain = nullptr,
-    };
+    wgpu::SurfaceCapabilities capabilities;
+    capabilities.nextInChain = nullptr,
 
     wgpuSurfaceGetCapabilities(*this->surface, adapter, &capabilities);
     printf("Got Sufrace Capabilities\n");
@@ -35,7 +35,7 @@ MandelRender::MandelRender(wgpu::Surface& surface, wgpu::Adapter& adapter, wgpu:
     wgpuSurfaceConfigure(*this->surface, &surface_config);
     printf("Configured Surface\n");
 
-    this->render_props = RenderProps(*this->device);
+    this->render_props = RenderProps(*this->device, surface_config);
 }
 
 MandelRender::MandelRender() {
@@ -77,12 +77,9 @@ void MandelRender::render() {
     };
 
     // Create the render pass
-    WGPURenderPassEncoder render_pass = wgpuCommandEncoderBeginRenderPass(command_encoder, &render_pass_desc);
-    /*
-     *
-     *  DO STUFF HERE
-     *
-     */
+    wgpu::RenderPassEncoder render_pass = wgpuCommandEncoderBeginRenderPass(command_encoder, &render_pass_desc);
+
+    this->render_props.render(render_pass);
 
     // End the render pass
     wgpuRenderPassEncoderEnd(render_pass);
