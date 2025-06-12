@@ -29,22 +29,22 @@
                 pos.x = 1.0;
                 pos.y = -1.0;
                 break;
-            },
+            }
             case 3u: {
                 pos.x = 1.0;
                 pos.y = -1.0;
                 break;
-            },
+            }
             case 4u: {
                 pos.x = -1.0;
                 pos.y = 1.0;
                 break;
-            },
+            }
             case 5u: {
                 pos.x = 1.0;
                 pos.y = 1.0;
                 break;
-            },
+            }
             default: {
 	            pos.x = 1.0;
 	            pos.y = -1.0;

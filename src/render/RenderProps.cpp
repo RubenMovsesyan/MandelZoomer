@@ -1,10 +1,67 @@
 #include "render/RenderProps.h"
 #include "webgpu/webgpu.hpp"
+#include <webgpu.h>
 
-RenderProps::RenderProps(wgpu::Device& device, wgpu::SurfaceConfiguration& config) {
+RenderProps::RenderProps(wgpu::Device& device, wgpu::Queue& queue, wgpu::SurfaceConfiguration& config) {
+    // Initialize the descriptor with default values
+    this->descriptor = MandelDescriptor{
+        .zoom = 1.0,
+    };
+
     wgpu::RenderPipelineDescriptor pipeline_desc;
     pipeline_desc.vertex.bufferCount = 0;
     pipeline_desc.vertex.buffers = nullptr;
+
+    // Create the viewer buffer
+    wgpu::BufferDescriptor buffer_desc;
+    buffer_desc.label = wgpu::StringView("Viewer Buffer");
+    buffer_desc.mappedAtCreation = false;
+    buffer_desc.nextInChain = nullptr;
+    buffer_desc.usage = wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
+    buffer_desc.size = sizeof(MandelDescriptor);
+    this->viewer_buffer = device.createBuffer(buffer_desc);
+
+    std::vector<std::byte> bytes(sizeof this->descriptor);
+    std::memcpy(bytes.data(), reinterpret_cast<void*>(&this->descriptor), sizeof this->descriptor);
+    queue.writeBuffer(this->viewer_buffer, 0, bytes.data(), bytes.size());
+
+    // Create the layout for this bind group
+    wgpu::BindGroupLayoutDescriptor bind_group_layout_desc;
+    bind_group_layout_desc.label = wgpu::StringView("Viewer Bind Group Layout");
+    bind_group_layout_desc.entryCount = 1;
+
+    // Define the entries for the bind group layout
+    wgpu::BindGroupLayoutEntry layout_entry;
+    layout_entry.binding = 0;
+    wgpu::BufferBindingLayout buffer_binding_layout;
+    buffer_binding_layout.nextInChain = nullptr;
+    buffer_binding_layout.hasDynamicOffset = false;
+    buffer_binding_layout.minBindingSize = 0;
+    buffer_binding_layout.type = wgpu::BufferBindingType::Uniform;
+    layout_entry.nextInChain = nullptr;
+    layout_entry.buffer = buffer_binding_layout;
+    layout_entry.visibility = wgpu::ShaderStage::Fragment;
+    std::array<wgpu::BindGroupLayoutEntry, 1> entries{layout_entry};
+    bind_group_layout_desc.entries = entries.data();
+    this->bind_group_layout = device.createBindGroupLayout(bind_group_layout_desc);
+
+    // Create the bind group
+    wgpu::BindGroupDescriptor bind_group_descriptor;
+    bind_group_descriptor.label = wgpu::StringView("Viewer Bind Group");
+    bind_group_descriptor.entryCount = 1;
+    bind_group_descriptor.layout = this->bind_group_layout;
+
+    // Create the entries for the bind group
+    wgpu::BindGroupEntry bind_group_entry;
+    bind_group_entry.binding = 0;
+    bind_group_entry.buffer = this->viewer_buffer;
+    bind_group_entry.offset = 0;
+    bind_group_entry.size = sizeof(MandelDescriptor);
+    bind_group_entry.nextInChain = nullptr;
+    std::array<wgpu::BindGroupEntry, 1> bind_group_entries{bind_group_entry};
+    bind_group_descriptor.entryCount = 1;
+    bind_group_descriptor.entries = bind_group_entries.data();
+    this->bind_group = device.createBindGroup(bind_group_descriptor);
 
     // Define the shader module
     wgpu::ShaderModuleDescriptor vert_shader_desc;
@@ -80,6 +137,14 @@ RenderProps::RenderProps(wgpu::Device& device, wgpu::SurfaceConfiguration& confi
         @location(0) uv: vec2<f32>,
     }
 
+    struct Descriptor {
+    	zoom: f32,
+     	offset: f32,
+    }
+
+    @group(0) @binding(0)
+    var<uniform> descriptor: Descriptor;
+
     fn complex_mult(complex1: vec2<f32>, complex2: vec2<f32>) -> vec2<f32> {
     	let a = complex1.x;
      	let b = complex1.y;
@@ -95,7 +160,7 @@ RenderProps::RenderProps(wgpu::Device& device, wgpu::SurfaceConfiguration& confi
 
     @fragment
     fn main(vertex_input: VertexOutput) -> @location(0) vec4<f32> {
-    	var c: vec2<f32> = vertex_input.uv;
+    	var c: vec2<f32> = vertex_input.uv * descriptor.zoom + vec2<f32>(descriptor.offset, 0.0);
 
      	var z: vec2<f32> = vec2<f32>(0.0, 0.0);
 
@@ -109,6 +174,17 @@ RenderProps::RenderProps(wgpu::Device& device, wgpu::SurfaceConfiguration& confi
     	return vec4<f32>(0.0, 0.0, 0.0, 1.0);
     }
     )";
+
+    // Create a pipeline layout based on the bind group
+    wgpu::PipelineLayoutDescriptor pipeline_layout_desc;
+    pipeline_layout_desc.label = wgpu::StringView("Mandel Pipeline Layout");
+    pipeline_layout_desc.nextInChain = nullptr;
+    // For some reasone I can't use the hpp header for this one
+    std::array<WGPUBindGroupLayout, 1> bind_group_layouts{this->bind_group_layout};
+    pipeline_layout_desc.bindGroupLayoutCount = bind_group_layouts.size();
+    pipeline_layout_desc.bindGroupLayouts = bind_group_layouts.data();
+    wgpu::PipelineLayout pipeline_layout = device.createPipelineLayout(pipeline_layout_desc);
+    pipeline_desc.layout = pipeline_layout;
 
     wgpu::ShaderSourceWGSL vert_shader_source;
     vert_shader_source.chain.next = nullptr;
@@ -173,7 +249,27 @@ RenderProps::RenderProps() {}
 RenderProps::~RenderProps() {
 }
 
+void RenderProps::modify_zoom(std::function<void(float&)> callback, wgpu::Queue& queue) {
+    callback(this->descriptor.zoom);
+
+    std::vector<std::byte> bytes(sizeof this->descriptor);
+    std::memcpy(bytes.data(), reinterpret_cast<void*>(&this->descriptor), sizeof this->descriptor);
+    queue.writeBuffer(this->viewer_buffer, 0, bytes.data(), bytes.size());
+}
+
+void RenderProps::modify_offset(std::function<void(float&)> callback, wgpu::Queue& queue) {
+    callback(this->descriptor.offset);
+
+    std::vector<std::byte> bytes(sizeof this->descriptor);
+    std::memcpy(bytes.data(), reinterpret_cast<void*>(&this->descriptor), sizeof this->descriptor);
+    queue.writeBuffer(this->viewer_buffer, 0, bytes.data(), bytes.size());
+}
+
 void RenderProps::render(wgpu::RenderPassEncoder& render_pass) {
     render_pass.setPipeline(this->pipeline);
+
+    // Set the bind group for the descriptor
+    render_pass.setBindGroup(0, this->bind_group, 0, {});
+
     render_pass.draw(6, 1, 0, 0);
 }

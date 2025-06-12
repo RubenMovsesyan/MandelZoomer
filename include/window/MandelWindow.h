@@ -14,6 +14,8 @@ using MouseMotionCallback = std::function<void(double x, double y)>;
 // 													delta x		delta y
 using MouseMotionDeltaCallback = std::function<void(double dx, double dy)>;
 
+using MouseScrollCallback = std::function<void(double dx, double dy)>;
+
 class MandelWindow {
   public:
     MandelWindow(const int width, const int height);
@@ -29,6 +31,7 @@ class MandelWindow {
     void set_key_callback(KeyCallback key_callback);
     void set_mouse_motion_callback(MouseMotionCallback mouse_motion_callback);
     void set_mouse_motion_delta_callback(MouseMotionDeltaCallback mouse_motion_callback);
+    void set_mouse_scroll_callback(MouseScrollCallback mouse_scroll_callback);
 
   private:
     wgpu::Instance instance;
@@ -48,6 +51,7 @@ class MandelWindow {
     KeyCallback key_callback;
     MouseMotionCallback mouse_motion_callback;
     MouseMotionDeltaCallback mouse_motion_delta_callback;
+    MouseScrollCallback mouse_scroll_callback;
 
     wgpu::Adapter request_adapter_sync(wgpu::RequestAdapterOptions const* options);
     wgpu::Device request_device_sync(wgpu::DeviceDescriptor const* descriptor);
@@ -55,6 +59,7 @@ class MandelWindow {
     // Static callbacks
     static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
     static void glfw_mouse_motion_callback(GLFWwindow* window, double xpos, double ypos);
+    static void glfw_scroll_motion_callback(GLFWwindow* window, double x_offset, double y_offset);
 
     void set_glfw_callbacks();
 };

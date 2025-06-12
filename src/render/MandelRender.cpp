@@ -35,7 +35,7 @@ MandelRender::MandelRender(wgpu::Surface& surface, wgpu::Adapter& adapter, wgpu:
     wgpuSurfaceConfigure(*this->surface, &surface_config);
     printf("Configured Surface\n");
 
-    this->render_props = RenderProps(*this->device, surface_config);
+    this->render_props = RenderProps(*this->device, *this->queue, surface_config);
 }
 
 MandelRender::MandelRender() {
@@ -101,6 +101,14 @@ void MandelRender::render() {
 
     // Actually display the result
     wgpuSurfacePresent(*this->surface);
+}
+
+void MandelRender::modify_zoom(std::function<void(float&)> function) {
+    this->render_props.modify_zoom(function, *this->queue);
+}
+
+void MandelRender::modify_offset(std::function<void(float&)> function) {
+    this->render_props.modify_offset(function, *this->queue);
 }
 
 std::pair<WGPUSurfaceTexture, WGPUTextureView> MandelRender::get_next_surface_view_data() {

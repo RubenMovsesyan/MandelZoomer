@@ -198,6 +198,18 @@ void MandelWindow::set_mouse_motion_delta_callback(
     this->set_glfw_callbacks();
 }
 
+void MandelWindow::set_mouse_scroll_callback(
+    MouseScrollCallback mouse_scroll_callback
+) {
+    if (this->mouse_scroll_callback) {
+        printf("Existing Mouse Scroll Callback is being replaced\n");
+    }
+
+    this->mouse_scroll_callback = mouse_scroll_callback;
+
+    this->set_glfw_callbacks();
+}
+
 void MandelWindow::set_glfw_callbacks() {
     // Store 'this' pointer so static callback can access it
     glfwSetWindowUserPointer(this->window, this);
@@ -205,6 +217,7 @@ void MandelWindow::set_glfw_callbacks() {
     // Set the static callback function
     glfwSetKeyCallback(this->window, MandelWindow::glfw_key_callback);
     glfwSetCursorPosCallback(this->window, MandelWindow::glfw_mouse_motion_callback);
+    glfwSetScrollCallback(this->window, MandelWindow::glfw_scroll_motion_callback);
 }
 
 // static Callbacks
@@ -228,5 +241,23 @@ void MandelWindow::glfw_mouse_motion_callback(GLFWwindow* window, double xpos, d
         user->mouse_motion_delta_callback(xpos - user->prev_mouse_x, ypos - user->prev_mouse_y);
         user->prev_mouse_x = xpos;
         user->prev_mouse_y = ypos;
+    }
+}
+
+void MandelWindow::glfw_scroll_motion_callback(GLFWwindow* window, double x_offset, double y_offset) {
+    auto user = static_cast<MandelWindow*>(glfwGetWindowUserPointer(window));
+
+    float new_zoom;
+    user->renderer->modify_zoom([&](float& zoom) {
+        zoom += (float)(y_offset * (zoom * 0.1));
+        new_zoom = zoom;
+    });
+
+    user->renderer->modify_offset([&](float& offset) {
+        offset -= (float)(x_offset * (new_zoom * 0.1));
+    });
+
+    if (user->mouse_scroll_callback) {
+        user->mouse_scroll_callback(x_offset, y_offset);
     }
 }

@@ -14,7 +14,6 @@ int main() {
             int action,
             int mode
         ) {
-            printf("The Key is: %d\n", key);
         }
     );
 
@@ -23,7 +22,6 @@ int main() {
             double x,
             double y
         ) {
-            printf("The mouse is at: %f, %f\n", x, y);
         }
     );
 

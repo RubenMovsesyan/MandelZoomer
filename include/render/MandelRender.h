@@ -12,6 +12,8 @@ class MandelRender {
     ~MandelRender();
 
     // Actually render something once the renderer has been initialized
+    void modify_zoom(std::function<void(float&)> function);
+    void modify_offset(std::function<void(float&)> function);
     void render();
 
   private:
