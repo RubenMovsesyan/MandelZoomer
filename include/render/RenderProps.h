@@ -5,7 +5,8 @@
 
 struct MandelDescriptor {
     float zoom{};
-    float offset{};
+    float offset_x{};
+    float offset_y{};
 };
 
 class RenderProps {
@@ -15,7 +16,7 @@ class RenderProps {
     ~RenderProps();
 
     void modify_zoom(std::function<void(float&)> function, wgpu::Queue& queue);
-    void modify_offset(std::function<void(float&)> function, wgpu::Queue& queue);
+    void modify_offset(std::function<void(float&, float&)> function, wgpu::Queue& queue);
     void render(wgpu::RenderPassEncoder& render_pass);
 
   private:

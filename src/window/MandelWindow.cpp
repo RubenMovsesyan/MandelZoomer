@@ -59,6 +59,10 @@ MandelWindow::MandelWindow(const int width, const int height) {
     }
 
     this->renderer = new MandelRender(this->surface, this->adapter, this->device, this->queue);
+
+    this->shift_pressed = false;
+    this->zoom_level = 1.0;
+    this->set_glfw_callbacks();
 }
 
 wgpu::Adapter MandelWindow::request_adapter_sync(wgpu::RequestAdapterOptions const* options) {
@@ -169,9 +173,6 @@ void MandelWindow::set_key_callback(KeyCallback key_callback) {
     }
 
     this->key_callback = key_callback;
-
-    this->set_glfw_callbacks();
-    printf("Setting the keycallback\n");
 }
 
 void MandelWindow::set_mouse_motion_callback(
@@ -182,8 +183,6 @@ void MandelWindow::set_mouse_motion_callback(
     }
 
     this->mouse_motion_callback = mouse_motion_callback;
-
-    this->set_glfw_callbacks();
 }
 
 void MandelWindow::set_mouse_motion_delta_callback(
@@ -194,8 +193,6 @@ void MandelWindow::set_mouse_motion_delta_callback(
     }
 
     this->mouse_motion_delta_callback = mouse_motion_delta_callback;
-
-    this->set_glfw_callbacks();
 }
 
 void MandelWindow::set_mouse_scroll_callback(
@@ -206,8 +203,6 @@ void MandelWindow::set_mouse_scroll_callback(
     }
 
     this->mouse_scroll_callback = mouse_scroll_callback;
-
-    this->set_glfw_callbacks();
 }
 
 void MandelWindow::set_glfw_callbacks() {
@@ -224,6 +219,12 @@ void MandelWindow::set_glfw_callbacks() {
 // TODO: Maybe change these to dynamic_cast?
 void MandelWindow::glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mode) {
     auto user = static_cast<MandelWindow*>(glfwGetWindowUserPointer(window));
+
+    if (key == 340 && action == 1) {
+        user->shift_pressed = true;
+    } else {
+        user->shift_pressed = false;
+    }
 
     if (user->key_callback) {
         user->key_callback(key, scancode, action, mode);
@@ -247,15 +248,27 @@ void MandelWindow::glfw_mouse_motion_callback(GLFWwindow* window, double xpos, d
 void MandelWindow::glfw_scroll_motion_callback(GLFWwindow* window, double x_offset, double y_offset) {
     auto user = static_cast<MandelWindow*>(glfwGetWindowUserPointer(window));
 
-    float new_zoom;
-    user->renderer->modify_zoom([&](float& zoom) {
-        zoom += (float)(y_offset * (zoom * 0.1));
-        new_zoom = zoom;
-    });
+    if (user->shift_pressed) {
+        user->renderer->modify_zoom([&](float& zoom) {
+            zoom += (float)(y_offset * (zoom * 0.1));
+            user->zoom_level = zoom;
+        });
+    } else {
+        user->renderer->modify_offset([&](float& offset_x, float& offset_y) {
+            offset_x -= (float)(x_offset * (user->zoom_level * 0.1));
+            offset_y += (float)(y_offset * (user->zoom_level * 0.1));
+        });
+    }
 
-    user->renderer->modify_offset([&](float& offset) {
-        offset -= (float)(x_offset * (new_zoom * 0.1));
-    });
+    // float new_zoom;
+    // user->renderer->modify_zoom([&](float& zoom) {
+    //     zoom += (float)(y_offset * (zoom * 0.1));
+    //     new_zoom = zoom;
+    // });
+
+    // user->renderer->modify_offset([&](float& offset) {
+    //     offset -= (float)(x_offset * (new_zoom * 0.1));
+    // });
 
     if (user->mouse_scroll_callback) {
         user->mouse_scroll_callback(x_offset, y_offset);

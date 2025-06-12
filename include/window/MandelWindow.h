@@ -46,6 +46,8 @@ class MandelWindow {
     GLFWwindow* window;
 
     double prev_mouse_x, prev_mouse_y;
+    bool shift_pressed;
+    float zoom_level;
 
     // Callback functions
     KeyCallback key_callback;

@@ -107,7 +107,7 @@ void MandelRender::modify_zoom(std::function<void(float&)> function) {
     this->render_props.modify_zoom(function, *this->queue);
 }
 
-void MandelRender::modify_offset(std::function<void(float&)> function) {
+void MandelRender::modify_offset(std::function<void(float&, float&)> function) {
     this->render_props.modify_offset(function, *this->queue);
 }
 

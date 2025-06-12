@@ -139,7 +139,8 @@ RenderProps::RenderProps(wgpu::Device& device, wgpu::Queue& queue, wgpu::Surface
 
     struct Descriptor {
     	zoom: f32,
-     	offset: f32,
+     	offset_x: f32,
+      	offset_y: f32,
     }
 
     @group(0) @binding(0)
@@ -160,7 +161,7 @@ RenderProps::RenderProps(wgpu::Device& device, wgpu::Queue& queue, wgpu::Surface
 
     @fragment
     fn main(vertex_input: VertexOutput) -> @location(0) vec4<f32> {
-    	var c: vec2<f32> = vertex_input.uv * descriptor.zoom + vec2<f32>(descriptor.offset, 0.0);
+    	var c: vec2<f32> = vertex_input.uv * descriptor.zoom + vec2<f32>(descriptor.offset_x, descriptor.offset_y);
 
      	var z: vec2<f32> = vec2<f32>(0.0, 0.0);
 
@@ -257,8 +258,8 @@ void RenderProps::modify_zoom(std::function<void(float&)> callback, wgpu::Queue&
     queue.writeBuffer(this->viewer_buffer, 0, bytes.data(), bytes.size());
 }
 
-void RenderProps::modify_offset(std::function<void(float&)> callback, wgpu::Queue& queue) {
-    callback(this->descriptor.offset);
+void RenderProps::modify_offset(std::function<void(float&, float&)> callback, wgpu::Queue& queue) {
+    callback(this->descriptor.offset_x, this->descriptor.offset_y);
 
     std::vector<std::byte> bytes(sizeof this->descriptor);
     std::memcpy(bytes.data(), reinterpret_cast<void*>(&this->descriptor), sizeof this->descriptor);
